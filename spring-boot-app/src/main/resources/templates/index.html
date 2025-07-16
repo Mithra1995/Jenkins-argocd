@@ -7,44 +7,56 @@
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link th:href="@{/css/main.css}" rel="stylesheet">
     <style>
-        body {
-            background-color: #f8f9fa;
-            padding-top: 4rem;
-        }
-        .hero {
-            background-color: #343a40;
+        body, html {
+            height: 100%;
+            margin: 0;
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background-image: url('https://cdn.pixabay.com/photo/2022/07/26/21/03/devops-7346715_1280.jpg');
+            background-size: cover;
+            background-position: center;
             color: white;
-            padding: 3rem 2rem;
-            border-radius: 0.5rem;
-            text-align: center;
-            box-shadow: 0 4px 10px rgba(0,0,0,0.1);
         }
-        .content {
-            margin-top: 2rem;
+
+        .overlay {
+            background: rgba(0, 0, 0, 0.6);
+            height: 100%;
+            width: 100%;
+            position: absolute;
+            top: 0;
+            left: 0;
+        }
+
+        .main-content {
+            position: relative;
+            z-index: 2;
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
             text-align: center;
+            padding: 2rem;
+        }
+
+        h1, p {
+            text-shadow: 1px 1px 3px rgba(0,0,0,0.8);
+        }
+
+        .btn-custom {
+            margin-top: 20px;
         }
     </style>
 </head>
 <body>
 
-<nav class="navbar navbar-expand-lg navbar-dark bg-dark fixed-top">
-    <div class="container-fluid">
-        <a class="navbar-brand" href="#">🚀 Java CI/CD Pipeline</a>
-    </div>
-</nav>
+<div class="overlay"></div>
 
-<div class="container">
-    <div class="hero">
-        <h1 class="display-5 fw-bold" th:text="${title}">Welcome to Mithra's Webpage</h1>
-        <p class="lead" th:text="${msg}">
-            Your Java application is successfully running in a CI/CD pipeline powered by Jenkins, Argo CD, and Kubernetes!
-        </p>
-    </div>
-
-    <div class="content">
-        <p>💡 Deployed with GitOps • Monitored with Prometheus • Visualized via Grafana</p>
-        <p><a href="https://github.com/Mithra1995/Jenkins-argocd" class="btn btn-primary" target="_blank">View on GitHub</a></p>
-    </div>
+<div class="main-content">
+    <h1 class="display-4 fw-bold" th:text="${title}">Welcome to Mithra's Webpage</h1>
+    <p class="lead" th:text="${msg}">
+        Your CI/CD pipeline is now live using Jenkins, Argo CD, Prometheus, and Grafana!
+    </p>
+    <a href="https://github.com/Mithra1995/Jenkins-argocd" target="_blank" class="btn btn-primary btn-lg btn-custom">🌐 View on GitHub</a>
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/js/bootstrap.bundle.min.js"></script>
