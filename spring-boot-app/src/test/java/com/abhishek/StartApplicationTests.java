@@ -1,3 +1,5 @@
+package com.abhishek;
+
 import org.junit.jupiter.api.Test;
 import org.springframework.boot.test.context.SpringBootTest;
 import org.springframework.ui.ExtendedModelMap;
@@ -5,12 +7,15 @@ import org.springframework.ui.Model;
 
 import static org.junit.jupiter.api.Assertions.assertEquals;
 
+// ✅ ADD THIS LINE:
+import com.abhishek.StartApplication;
+
 @SpringBootTest
 class StartApplicationTests {
 
     @Test
     void contextLoads() {
-        // Basic Spring context loading test
+        // Just checks Spring context loads
     }
 
     @Test
