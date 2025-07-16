@@ -1,27 +1,26 @@
 package com.abhishek;
 
-import org.junit.jupiter.api.Test;
-import org.springframework.boot.test.context.SpringBootTest;
-import org.springframework.ui.ModelMap;
+import org.springframework.boot.SpringApplication;
+import org.springframework.boot.autoconfigure.SpringBootApplication;
+import org.springframework.stereotype.Controller;
+import org.springframework.ui.Model;
+import org.springframework.web.bind.annotation.GetMapping;
 
-import static org.junit.jupiter.api.Assertions.assertEquals;
+@SpringBootApplication
+@Controller
+public class StartApplication {
 
-@SpringBootTest
-class StartApplicationTests {
-
-    @Test
-    void contextLoads() {
-        // Just tests if the Spring context loads successfully
+    @GetMapping("/")
+    public String index(final Model model) {
+        model.addAttribute("title", "I have successfuly built a sprint boot application using Maven");
+        model.addAttribute("msg", "This application is deployed on to Kubernetes using Argo CD");
+        return "index";
     }
 
-    @Test
-    void testIndexViewName() {
-        StartApplication app = new StartApplication();
-        ModelMap model = new ModelMap();
-        String viewName = app.index(model);
-
-        assertEquals("index", viewName);
-        assertEquals("I have successfuly built a sprint boot application using Maven", model.get("title"));
-        assertEquals("This application is deployed on to Kubernetes using Argo CD", model.get("msg"));
+    public static void main(String[] args) {
+        SpringApplication.run(StartApplication.class, args);
     }
+
 }
+
+
