@@ -1,81 +1,95 @@
 pipeline {
-  agent any
+    agent any
 
-  environment {
-    AWS_REGION       = 'us-east-1'
-    AWS_ACCOUNT_ID   = '382828593676'
-    ECR_REPO         = 'my-ecr-repo'
-    SONAR_URL        = 'http://<your-sonarqube-ip>:9000' // replace with your actual SonarQube IP
-  }
-
-  stages {
-    stage('Checkout Code') {
-      steps {
-        git branch: 'main', url: 'https://github.com/Mithra1995/Jenkins-argocd.git'
-      }
+    environment {
+        GIT_USER_NAME = 'Mithra1995'
+        GIT_REPO_NAME = 'Jenkins-argocd'
+        SONAR_URL = "http://54.161.137.35:9000"
+        IMAGE_TAG = "v1.${BUILD_NUMBER}"
+        ECR_URI = "382828593676.dkr.ecr.us-east-1.amazonaws.com/my-ecr-repo"
+        AWS_REGION = 'us-east-1'
+        IMAGE_NAME = 'my-ecr-repo'
+        ECR_REGISTRY = '382828593676.dkr.ecr.us-east-1.amazonaws.com'
     }
 
-    stage('Build with Maven') {
-      steps {
-        sh 'cd spring-boot-app && mvn clean package'
-      }
-    }
-
-    stage('SonarQube Analysis') {
-      steps {
-        withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
-          sh '''
-            cd spring-boot-app
-            mvn sonar:sonar \
-              -Dsonar.projectKey=JenkinsApp \
-              -Dsonar.host.url=$SONAR_URL \
-              -Dsonar.login=$SONAR_AUTH_TOKEN
-          '''
+    stages {
+        stage('Git Checkout') {
+            steps {
+                git branch: 'main', url: 'https://github.com/Mithra1995/Jenkins-argocd'
+            }
         }
-      }
-    }
 
-    stage('Trivy Scan') {
-      steps {
-        sh '''
-          echo "Running Trivy scan..."
-          trivy image openjdk:17-jdk || echo "Scan completed with warnings."
-        '''
-      }
-    }
-
-    stage('Build and Push to ECR') {
-      environment {
-        IMAGE_TAG = "${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com/${ECR_REPO}:${BUILD_NUMBER}"
-      }
-      steps {
-        withCredentials([[
-          $class: 'AmazonWebServicesCredentialsBinding',
-          credentialsId: 'aws-creds'
-        ]]) {
-          sh '''
-            aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin ${AWS_ACCOUNT_ID}.dkr.ecr.${AWS_REGION}.amazonaws.com
-            cd spring-boot-app
-            docker build -t $IMAGE_TAG .
-            docker push $IMAGE_TAG
-          '''
+        stage('Build with Maven') {
+            steps {
+                sh 'cd spring-boot-app && mvn clean package'
+            }
         }
-      }
-    }
 
-    stage('Update Deployment Manifest') {
-      steps {
-        withCredentials([string(credentialsId: 'github-token', variable: 'GITHUB_TOKEN')]) {
-          sh '''
-            git config user.email "your-email@example.com"
-            git config user.name "Your Name"
-            sed -i "s|replaceImageTag|${BUILD_NUMBER}|" spring-boot-app-manifests/deployment.yml
-            git add spring-boot-app-manifests/deployment.yml
-            git commit -m "Update image tag to ${BUILD_NUMBER}"
-            git push https://$GITHUB_TOKEN@github.com/Mithra1995/Jenkins-argocd.git HEAD:main
-          '''
+        stage('Test') {
+            steps {
+                sh 'cd spring-boot-app && mvn test'
+            }
         }
-      }
+
+        stage('Code Analysis - SonarQube') {
+            steps {
+                withCredentials([string(credentialsId: 'sonarqube', variable: 'SONAR_AUTH_TOKEN')]) {
+                    sh '''
+                        cd spring-boot-app
+                        mvn sonar:sonar \
+                          -Dsonar.login=$SONAR_AUTH_TOKEN \
+                          -Dsonar.host.url=$SONAR_URL
+                    '''
+                }
+            }
+        }
+
+        stage('Docker Build & Push to ECR') {
+            steps {
+                script {
+                    sh """
+                        echo "Logging in to Amazon ECR..."
+                        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
+
+                        echo "Building Docker image..."
+                        docker build -t $IMAGE_NAME ./spring-boot-app
+
+                        echo "Tagging image with: $IMAGE_TAG"
+                        docker tag $IMAGE_NAME:latest $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+                        docker tag $IMAGE_NAME:latest $ECR_REGISTRY/$IMAGE_NAME:latest
+
+                        echo "Pushing image to ECR..."
+                        docker push $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
+                        docker push $ECR_REGISTRY/$IMAGE_NAME:latest
+                    """
+                }
+            }
+        }
+
+        stage('Update Deployment File in Git') {
+            steps {
+                withCredentials([string(credentialsId: 'github', variable: 'GITHUB_TOKEN')]) {
+                    sh '''
+                        set -e
+
+                        echo "Cloning the repo..."
+                        rm -rf $GIT_REPO_NAME
+                        git clone https://$GITHUB_TOKEN@github.com/$GIT_USER_NAME/$GIT_REPO_NAME.git
+                        cd $GIT_REPO_NAME
+
+                        echo "Configuring Git user..."
+                        git config user.email "mithra.balasubramaniam05@gmail.com"
+                        git config user.name "Mithra1995"
+
+                        echo "Updating deployment image tag..."
+                        sed -i "s|replaceImageTag|$IMAGE_TAG|g" spring-boot-app-manifests/deployment.yml
+
+                        git add spring-boot-app-manifests/deployment.yml
+                        git commit -m "Update deployment image to version $IMAGE_TAG" || echo "No changes to commit"
+                        git push https://$GITHUB_TOKEN@github.com/$GIT_USER_NAME/$GIT_REPO_NAME.git HEAD:main
+                    '''
+                }
+            }
+        }
     }
-  }
 }
