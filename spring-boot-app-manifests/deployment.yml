@@ -16,7 +16,9 @@ spec:
         app: spring-boot-app
     spec:
       containers:
-      - name: spring-boot-app
-        image: 382828593676.dkr.ecr.us-east-1.amazonaws.com/my-ecr-repo:v1.46
-        ports:
-        - containerPort: 8080
+        - name: spring-boot-app
+          image: 382828593676.dkr.ecr.us-east-1.amazonaws.com/my-ecr-repo:v1.46
+          ports:
+            - containerPort: 8080
+      imagePullSecrets:
+        - name: ecr-pull-secret
