@@ -4,7 +4,7 @@ pipeline {
     environment {
         GIT_USER_NAME = 'Mithra1995'
         GIT_REPO_NAME = 'Jenkins-argocd'
-        SONAR_URL = "http://54.161.137.35:9000"
+        SONAR_URL = "http://18.232.111.67:9000"
         IMAGE_TAG = "v1.${BUILD_NUMBER}"
         ECR_URI = "382828593676.dkr.ecr.us-east-1.amazonaws.com/my-ecr-repo"
         AWS_REGION = 'us-east-1'
@@ -44,13 +44,10 @@ pipeline {
             }
         }
 
-        stage('Docker Build & Push to ECR') {
+        stage('Docker Build') {
             steps {
                 script {
                     sh """
-                        echo "Logging in to Amazon ECR..."
-                        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
-
                         echo "Building Docker image..."
                         docker build -t $IMAGE_NAME ./spring-boot-app
 
@@ -58,10 +55,27 @@ pipeline {
                         docker tag $IMAGE_NAME:latest $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
                         docker tag $IMAGE_NAME:latest $ECR_REGISTRY/$IMAGE_NAME:latest
 
-                        echo "Pushing image to ECR..."
+                        echo "Pushing images to ECR..."
+                        aws ecr get-login-password --region $AWS_REGION | docker login --username AWS --password-stdin $ECR_REGISTRY
                         docker push $ECR_REGISTRY/$IMAGE_NAME:$IMAGE_TAG
                         docker push $ECR_REGISTRY/$IMAGE_NAME:latest
                     """
+                }
+            }
+        }
+
+        stage('Trivy Scan on ECR Image') {
+            steps {
+                script {
+                    sh '''
+                        echo "Installing Trivy in workspace..."
+                        mkdir -p $WORKSPACE/trivy-bin
+                        curl -sfL https://raw.githubusercontent.com/aquasecurity/trivy/main/contrib/install.sh | sh -s -- -b $WORKSPACE/trivy-bin
+                        export PATH=$WORKSPACE/trivy-bin:$PATH
+
+                        echo "Scanning ECR image: $ECR_URI:$IMAGE_TAG"
+                        $WORKSPACE/trivy-bin/trivy image --exit-code 0 --severity CRITICAL,HIGH $ECR_URI:$IMAGE_TAG || echo "Scan completed with findings"
+                    '''
                 }
             }
         }
@@ -82,7 +96,7 @@ pipeline {
                         git config user.name "Mithra1995"
 
                         echo "Updating deployment image tag..."
-                        sed -i "s|replaceImageTag|$IMAGE_TAG|g" spring-boot-app-manifests/deployment.yml
+                        sed -i "s|$ECR_URI:.*|$ECR_URI:$IMAGE_TAG|g" spring-boot-app-manifests/deployment.yml
 
                         git add spring-boot-app-manifests/deployment.yml
                         git commit -m "Update deployment image to version $IMAGE_TAG" || echo "No changes to commit"
@@ -90,6 +104,34 @@ pipeline {
                     '''
                 }
             }
+        }
+    }
+
+    post {
+        success {
+            emailext(
+                subject: "✅ SUCCESS: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """<p>Hi Team,</p>
+                         <p>The Jenkins build has <b>succeeded</b>.</p>
+                         <p>Build: <a href="${env.BUILD_URL}">${env.JOB_NAME} #${env.BUILD_NUMBER}</a></p>""",
+                to: 'mithra.balasubramaniam05@gmail.com',
+                mimeType: 'text/html'
+            )
+        }
+
+        failure {
+            emailext(
+                subject: "❌ FAILURE: ${env.JOB_NAME} #${env.BUILD_NUMBER}",
+                body: """<p>Hi Team,</p>
+                         <p>The Jenkins build has <b>failed</b>.</p>
+                         <p>Build: <a href="${env.BUILD_URL}">${env.JOB_NAME} #${env.BUILD_NUMBER}</a></p>""",
+                to: 'mithra.balasubramaniam05@gmail.com',
+                mimeType: 'text/html'
+            )
+        }
+
+        always {
+            echo "📬 Notification logic executed after the pipeline run"
         }
     }
 }
