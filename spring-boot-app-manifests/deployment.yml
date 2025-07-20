@@ -20,5 +20,17 @@ spec:
           image: 382828593676.dkr.ecr.us-east-1.amazonaws.com/my-ecr-repo:v1.47
           ports:
             - containerPort: 8080
+          args:
+            - "-Xmx512m"
+            - "-Xms256m"
+            - "-jar"
+            - "app.jar"
+          resources:
+            requests:
+              memory: "512Mi"
+              cpu: "250m"
+            limits:
+              memory: "1Gi"
+              cpu: "500m"
       imagePullSecrets:
         - name: ecr-pull-secret
